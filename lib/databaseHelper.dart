@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: (db, oldVersion, newVersion) async {
         await db.execute('DROP TABLE IF EXISTS productos');
@@ -37,7 +37,8 @@ class DatabaseHelper {
         referencia TEXT,
         precio REAL,
         descripcion TEXT,
-        categoria TEXT
+        categoria TEXT,
+        firestoreId TEXT
       )
     ''');
   }

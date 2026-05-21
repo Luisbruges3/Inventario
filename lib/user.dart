@@ -5,8 +5,9 @@ class User {
   final double precio;
   final String descripcion;
   final String categoria;
+  final String? firestoreId;
 
-  User({this.id, required this.nombre, required this.referencia, required this.precio, required this.descripcion, required this.categoria});
+  User({this.id, required this.nombre, required this.referencia, required this.precio, required this.descripcion, required this.categoria, this.firestoreId});
 
   Map<String, dynamic> toMap() {
     return {
@@ -15,7 +16,8 @@ class User {
       'referencia': referencia,
       'precio': precio,
       'descripcion': descripcion,
-      'categoria': categoria
+      'categoria': categoria,
+      'firestoreId': firestoreId
     };
   }
 
@@ -26,7 +28,8 @@ class User {
       referencia: map['referencia'],
       precio: map['precio'],
       descripcion: map['descripcion'],
-      categoria: map['categoria']
+      categoria: map['categoria'],
+      firestoreId: map['firestoreId']
     );
   }
 }

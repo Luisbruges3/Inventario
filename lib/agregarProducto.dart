@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'databaseHelper.dart';
 import 'user.dart';
+import 'firestoreHelper.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:intl/intl.dart';
 
 class AgregarProducto extends StatefulWidget {
   const AgregarProducto({super.key});
@@ -10,6 +12,7 @@ class AgregarProducto extends StatefulWidget {
 }
 
 class _AgregarProductoState extends State<AgregarProducto> {
+  final formatoPrecio = NumberFormat('#,###', 'es_CO');
   final TextEditingController _referenciaController = TextEditingController();
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _precioController = TextEditingController();
@@ -19,6 +22,13 @@ class _AgregarProductoState extends State<AgregarProducto> {
   
 
    Future<void> guardar() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult.contains(ConnectivityResult.none)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sin conexión a internet. Conéctate para guardar.')),
+        );
+        return;
+      }
     if (_referenciaController.text.isEmpty ||
         _nombreController.text.isEmpty ||
         _precioController.text.isEmpty ||
@@ -38,22 +48,23 @@ class _AgregarProductoState extends State<AgregarProducto> {
       categoria: seleccionada!,
     );
 
-    await DatabaseHelper.instance.insertUser(nuevoProducto);
+    await FirestoreHelper.instance.syncProducto(nuevoProducto);
     Navigator.pop(context); // regresa a la anterior pantalla 
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         toolbarHeight: 80,
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Agregar Producto", style: TextStyle(fontSize: 35, color: Colors.brown, fontWeight: FontWeight.w600)),
-            Text("Llena los campos del nuevo producto", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400)),
+            Text("Agregar Producto", style: TextStyle(fontSize: 30, color: Color(0xFF1565C0), fontWeight: FontWeight.w600)),
+            Text("Llena los campos del nuevo producto", style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w400)),
           ],
         ),
       ),

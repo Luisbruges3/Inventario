@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'databaseHelper.dart';
 import 'agregarProducto.dart';
 import 'user.dart';
+import 'firestoreHelper.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:intl/intl.dart';
 
 class UserList extends StatefulWidget {
   const UserList({super.key});
@@ -12,32 +14,30 @@ class UserList extends StatefulWidget {
 
 class _UserListState extends State<UserList> {
   List<String> opciones = ['Alimentos', 'Tecnologia', 'Hogar', 'Ropa', 'Otros'];
-  List<User> _users = [];
 
   @override
   void initState() {
-    super.initState();
-    _fetchUsers();
+    super.initState(); 
   }
 
-  Future<void> _fetchUsers() async {
-    final userMaps = await DatabaseHelper.instance.queryAllUsers();
-    setState(() {
-      _users = userMaps.map((userMap) => User.fromMap(userMap)).toList();
-    });
-  }
+  final formatoPrecio = NumberFormat('#,###', 'es_CO');
 
-  
-
-  Future<void> borrar(int id) async {
-    await DatabaseHelper.instance.deleteUser(id);
-    _fetchUsers();
+  Future<void> borrar(User user) async {
+    await FirestoreHelper.instance.syncDeleteProducto(user.firestoreId!);
   }
 
   Future<void> _mostrarDialogoEditar(User user) async {
+   final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sin conexión a internet. Conéctate para guardar.')),
+      );
+      return;
+    } 
+
   final _editNombreController = TextEditingController(text: user.nombre);
   final _editReferenciaController = TextEditingController(text: user.referencia);
-  final _editPrecioController = TextEditingController(text: user.precio.toString());
+  final _editPrecioController = TextEditingController(text: user.precio.toInt().toString());
   final _editDescripcionController = TextEditingController(text: user.descripcion);
   String? _editCategoria = user.categoria;
 
@@ -94,10 +94,10 @@ class _UserListState extends State<UserList> {
                 precio: double.parse(_editPrecioController.text),
                 descripcion: _editDescripcionController.text,
                 categoria: _editCategoria!,
+                firestoreId: user.firestoreId
               );
-              await DatabaseHelper.instance.updateUser(actualizado);
+              await FirestoreHelper.instance.syncUpdateProducto(actualizado);
               Navigator.pop(context);
-              _fetchUsers();
             },
             child: Text('Guardar'),
           ),
@@ -107,21 +107,20 @@ class _UserListState extends State<UserList> {
   );
 }
 
-  double get total => _users.fold(0, (sum, u) => sum + u.precio);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFFE3F2FD),
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         toolbarHeight: 80,
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        backgroundColor: Color(0xFFE3F2FD),
         title: Row(
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Hola Usuario", style: TextStyle(fontSize: 35, color: Colors.brown, fontWeight: FontWeight.w600)),
+                Text("Hola Usuario", style: TextStyle(fontSize: 35, color: Color(0xFF1565C0), fontWeight: FontWeight.w600)),
                 Text("Inventario de los productos", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400)),
               ],
             ),
@@ -130,13 +129,12 @@ class _UserListState extends State<UserList> {
       ),
 
       floatingActionButton: FloatingActionButton(  
-        backgroundColor: Colors.brown,
+        backgroundColor: Color(0xFF1565C0),
         onPressed: () async {
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => AgregarProducto()),
           );
-          _fetchUsers();
         },
         child: Icon(Icons.add, color: Colors.white),
       ),
@@ -154,12 +152,33 @@ class _UserListState extends State<UserList> {
                   Text("Inventario Actual", style: TextStyle(fontSize: 30, color: Colors.black)),
                   SizedBox(height: 10),
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: _users.length,
-                      itemBuilder: (context, index) {
-                        return productoCard(_users[index], context);
-                      },
-                    ),
+                    child: StreamBuilder<List<User>>(
+                      stream: FirestoreHelper.instance.getProductos(),
+                      builder:(context,snapshot){
+                      if(snapshot.hasData){
+                          final productos = snapshot.data!;
+                          final total = productos.fold(0.0, (sum, u) => sum + u.precio);
+                          
+                          return Column(
+                            children: [
+                              Text("Total: \$${formatoPrecio.format(total)}", 
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1565C0))),
+                              
+                              Expanded(
+                                child: ListView.builder(
+                                  itemCount: snapshot.data!.length,
+                                  itemBuilder: (context, index) {
+                                    return productoCard(snapshot.data![index], context);
+                                  },)
+                                ),
+                              ]
+                            );
+                        
+                      }else{
+                        return CircularProgressIndicator();
+                        }
+                      }
+                    )
                   ),
                 ],
               ),
@@ -189,7 +208,7 @@ class _UserListState extends State<UserList> {
                   children: [
                     Text(user.nombre, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                     Text(user.referencia, style: TextStyle(fontSize: 15)),
-                    Text('\$${user.precio.toStringAsFixed(2)}', style: TextStyle(fontSize: 15)),
+                    Text('\$${formatoPrecio.format(user.precio)}', style: TextStyle(fontSize: 15)),
                   ],
                 ),
               ),
@@ -199,7 +218,7 @@ class _UserListState extends State<UserList> {
               ),
               IconButton(
                 icon: Icon(Icons.delete, color: Colors.red),
-                onPressed: () => borrar(user.id!),
+                onPressed: () => borrar(user),
               ),
             ],
           ),

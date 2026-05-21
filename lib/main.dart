@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
-import 'container.dart';
 import 'doctor.dart';
-import 'home.dart';
-import 'CustomTextField.dart';
-import 'cajas2.dart';
-import 'radio.dart';
-import 'cajas1.dart';
-import 'cajas3.dart';
 import 'ejCheck.dart';
 import 'parcial2.dart';
 import 'dbFront.dart';
 import 'databaseHelper.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'user.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await DatabaseHelper.instance.initDb();
   await DatabaseHelper.instance.initializeUsers();
   runApp(const MyApp());
