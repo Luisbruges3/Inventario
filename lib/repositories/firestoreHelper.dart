@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'user.dart';
+import '../models/user.dart';
 
 class FirestoreHelper {
   static final FirestoreHelper instance = FirestoreHelper._instance();

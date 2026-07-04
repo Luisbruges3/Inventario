@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'user.dart';
-import 'firestoreHelper.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../controllers/producto_controller.dart';
 
-class AgregarProducto extends StatefulWidget {
+class AgregarProducto extends ConsumerStatefulWidget {
   const AgregarProducto({super.key});
   @override
-  State<AgregarProducto> createState() => _AgregarProductoState();
+  ConsumerState<AgregarProducto> createState() => _AgregarProductoState();
 }
 
-class _AgregarProductoState extends State<AgregarProducto> {
+class _AgregarProductoState extends ConsumerState<AgregarProducto> {
   final formatoPrecio = NumberFormat('#,###', 'es_CO');
   final TextEditingController _referenciaController = TextEditingController();
   final TextEditingController _nombreController = TextEditingController();
@@ -19,47 +18,43 @@ class _AgregarProductoState extends State<AgregarProducto> {
   final TextEditingController _descripcionController = TextEditingController();
   String? seleccionada;
   List<String> opciones = ['Alimentos', 'Tecnologia', 'Hogar', 'Ropa', 'Otros'];
-  
 
-   Future<void> guardar() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult.contains(ConnectivityResult.none)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sin conexión a internet. Conéctate para guardar.')),
+  Future<void> guardar() async {
+    final resultado = await ref
+        .read(productoControllerProvider.notifier)
+        .agregar(
+          nombre: _nombreController.text,
+          referencia: _referenciaController.text,
+          precio: _precioController.text,
+          descripcion: _descripcionController.text,
+          categoria: seleccionada,
         );
-        return;
-      }
-    if (_referenciaController.text.isEmpty ||
-        _nombreController.text.isEmpty ||
-        _precioController.text.isEmpty ||
-        _descripcionController.text.isEmpty ||
-        seleccionada == null) {
+
+    if (!mounted) return;
+
+    if (resultado == ProductoAccionResultado.sinConexion) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sin conexión a internet. Conéctate para guardar.')),
+      );
+      return;
+    }
+
+    if (resultado == ProductoAccionResultado.camposInvalidos) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Por favor llena todos los campos')),
       );
       return;
     }
 
-    User nuevoProducto = User(
-      referencia: _referenciaController.text,
-      nombre: _nombreController.text,
-      precio: double.parse(_precioController.text),
-      descripcion: _descripcionController.text,
-      categoria: seleccionada!,
-    );
-
-    await FirestoreHelper.instance.syncProducto(nuevoProducto);
-    Navigator.pop(context); // regresa a la anterior pantalla 
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         toolbarHeight: 80,
-        
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
