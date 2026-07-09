@@ -4,14 +4,17 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
-import 'views/dbFront.dart';
 import 'views/login_screen.dart';
+import 'views/dashboard_portero.dart';
+import 'package:intl/date_symbol_data_local.dart'; 
+import 'views/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await initializeDateFormatting('es_CO', null); // agregar esta línea
   runApp(
     const ProviderScope(
       child: MyApp(),
@@ -34,14 +37,12 @@ class MyApp extends StatelessWidget {
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
-          // Esperando respuesta de Firebase
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             );
           }
 
-          // Hay sesión activa — consultar rol en Firestore
           if (snapshot.hasData && snapshot.data != null) {
             return FutureBuilder<DocumentSnapshot>(
               future: FirebaseFirestore.instance
@@ -55,19 +56,21 @@ class MyApp extends StatelessWidget {
                   );
                 }
 
-                // Si el documento no existe, cerrar sesión y volver al login
                 if (userSnapshot.hasError || !userSnapshot.data!.exists) {
                   FirebaseAuth.instance.signOut();
                   return const LoginScreen();
                 }
 
-                final rol = userSnapshot.data?.get('rol') ?? 'usuario';
-                return UserList(esAdmin: rol == 'admin');
+                final rol = userSnapshot.data?.get('rol') ?? 'portero';
+
+                if (rol == 'admin') {
+                  return const HomeScreen();
+                }
+                return const DashboardPortero();
               },
             );
           }
 
-          // No hay sesión — mostrar login
           return const LoginScreen();
         },
       ),
